@@ -1,0 +1,327 @@
+---
+title: "ITDisc"
+author: "Elizabeth Crummy"
+date: "April 5, 2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+IT_ProbDisc <- read_excel("C:/Users/eacru/OneDrive/Documents/Ferguson lab data/Probability discounting/IT_ProbDisc.xlsx")
+head(IT_ProbDisc)
+```
+
+```{r}
+#Prep data for analyses - adding a new column specifying viral expression confirmation (yes or no)
+#Create new column called 'Expression' and intialize values as NA, which will be filled in later
+IT_ProbDisc[,"Expression"] <- NA
+
+#Add a value of 0 (no expression) or 1 (expression) for all samples based on subject number.
+IT_ProbDisc$Expression <- ifelse(IT_ProbDisc$Subject <= "156" | IT_ProbDisc$Subject == "158", 1, 0)
+
+```
+
+```{r}
+#Create new columns for 'Risky' and 'Safe' levers, latencies for risky and safe levers
+IT_ProbDisc[,"Risky Choice"] <- NA
+IT_ProbDisc[,"Safe Choice"]<- NA
+
+
+#load dplyr library for between function to specify subject range
+library(dplyr)
+
+#Most subjects had the risky choice as right lever, but 147,148, 155,156,157,158 were left lever risky
+#Copy 'Left Choice' presses to risky lever if those animals, else right choice
+IT_ProbDisc$`Risky Choice` <- ifelse(IT_ProbDisc$Subject[between(IT_ProbDisc$Subject, 155, 158)] |IT_ProbDisc$Subject <= "148", IT_ProbDisc$`Left Choices`, IT_ProbDisc$`Right Choices`)
+#Now will do the same for the 'Safe Choice'
+IT_ProbDisc$`Safe Choice` <- ifelse(IT_ProbDisc$Subject[between(IT_ProbDisc$Subject, 155, 158)] |IT_ProbDisc$Subject <= "148", IT_ProbDisc$`Right Choices`, IT_ProbDisc$`Left Choices`)
+#...And latencies divided into risky and safe during choice sessions
+IT_ProbDisc$`Risky Choice Latency` <- ifelse(IT_ProbDisc$Subject[between(IT_ProbDisc$Subject, 155, 158)] |IT_ProbDisc$Subject <= "148", IT_ProbDisc$`Latency to choose lt lever`, IT_ProbDisc$`Latency to choose rt lever`)
+#Now will do the same for the 'Safe Choice'
+IT_ProbDisc$`Safe Choice Latency` <- ifelse(IT_ProbDisc$Subject[between(IT_ProbDisc$Subject, 155, 158)] |IT_ProbDisc$Subject <= "148", IT_ProbDisc$`Latency to choose rt lever`, IT_ProbDisc$`Latency to choose lt lever`)
+```
+
+```{r}
+#transform risky choice responses into percent of choices
+IT_ProbDisc$'Risky Choice Percent' <- IT_ProbDisc$'Risky Choice' /10 * 100
+#transform safe choice to percent of choices
+IT_ProbDisc$'Safe Choice Percent' <- IT_ProbDisc$'Safe Choice' /10 * 100
+```
+
+```{r}
+
+#make subset with only the CNO and Veh conditions
+IT_subset<-subset(IT_ProbDisc, Condition == "Veh" | Condition == "CNO")
+
+```
+
+```{r}
+#import necessary libraries
+library(ggplot2)
+library(dplyr)
+library(multcomp)
+library(car)
+library(MASS)
+```
+
+```{r}
+#Set Block as a factor
+IT_subset$Block<-factor(IT_subset$Block, levels=c(1,2,3,4), labels=c("100","50","12.5","6.25"))
+#Set expression as factor
+IT_subset$Expression<-factor(IT_subset$Expression, levels=c(0,1), labels=c("No expression", "Expression"))
+#Condition as factor
+IT_subset$Condition<-as.factor(IT_subset$Condition)
+
+#Set subject as factor
+IT_subset$Subject<-as.factor(IT_subset$Subject)
+
+
+```
+
+```{r}
+#From sthda
+#+++++++++++++++++++++++++
+# Function to calculate the mean and the standard deviation
+  # for each group
+#+++++++++++++++++++++++++
+# data : a data frame
+# varname : the name of a column containing the variable
+  #to be summariezed
+# groupnames : vector of column names to be used as
+  # grouping variables
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+```
+
+```{r}
+#Summary statistics for risky choice - calculate Sd for risky choice percentage
+RiskyPercentSummary <- data_summary(subset(IT_subset, Expression=="Expression"), varname="Risky Choice Percent", groupnames=c("Block", "Condition"))
+
+#Line graph for percent of risky choice in cno vs. vehicle across blocks
+library(ggplot2)
+riskyplot<-ggplot(RiskyPercentSummary, aes(x=Block, y=`Risky Choice Percent`, group=Condition, color=Condition))+ geom_line(size=1) +geom_point(size=4) +geom_errorbar(aes(ymin=`Risky Choice Percent`- sd/sqrt(length(unique(subset(IT_subset, Expression == "Expression")$Subject))), ymax=`Risky Choice Percent`+ sd/sqrt(length(unique(subset(IT_subset, Expression == "Expression")$Subject)))), width=.5)+labs(title="Risky Choice across Session", x="Probability(%)", y="Risky Choice (%)")+theme_classic()+scale_color_manual(values=c("coral","turquoise3"))
+
+riskyplot
+```
+
+```{r}
+#Summary statistics for safe choice - calculate sd for risky choice percentage
+SafePercentSummary <- data_summary(subset(IT_subset, Expression=="Expression"), varname="Safe Choice Percent", groupnames=c("Block", "Condition", "Expression"))
+
+#Line graph for percent of risky choice in cno vs. vehicle across blocks
+library(ggplot2)
+safeplot<-ggplot(SafePercentSummary, aes(x=Block, y=`Safe Choice Percent`, group=Condition, color=Condition))+ geom_line(size=1) +geom_point(size=4) +geom_errorbar(aes(ymin=`Safe Choice Percent`- sd/sqrt(length(unique(subset(IT_subset, Expression == "Expression")$Subject))), ymax=`Safe Choice Percent`+ sd/sqrt(length(unique(subset(IT_subset, Expression == "Expression")$Subject)))), width=.5)+labs(title="Safe Choice across Session", x="Probability(%)", y="Safe Choice (%)")+theme_classic()+scale_color_manual(values=c("coral","turquoise3")) 
+
+safeplot
+```
+
+```{r}
+#Summary statistics for risky choice latencies - calculate sd for risky choice latencies
+RiskyLatencySummary <- data_summary(subset(IT_subset, Expression=="Expression"), varname="Risky Choice Latency", groupnames=c("Block", "Condition", "Expression"))
+
+#Line graph for percent of risky choice in cno vs. vehicle across blocks
+library(ggplot2)
+risklatplot<-ggplot(RiskyLatencySummary, aes(x=Block, y=`Risky Choice Latency`,fill=Condition))+ geom_bar(stat="identity", color="black", position=position_dodge())  +geom_errorbar(aes(ymin=`Risky Choice Latency`, ymax=`Risky Choice Latency`+ sd/sqrt(length(unique(subset(IT_subset, Expression == "Expression")$Subject)))), width=.5, position=position_dodge(.9))+labs(title="Latency for Risky Choice", x="Probability(%)", y="Press Latency (s)") +theme_classic() +scale_fill_manual(values=c("coral","turquoise3")) 
+
+risklatplot
+```
+
+```{r}
+#Summary statistics for risky choice latencies - calculate sd for risky choice latencies
+SafeLatencySummary <- data_summary(subset(IT_subset, Expression=="Expression"), varname="Safe Choice Latency", groupnames=c("Block", "Condition", "Expression"))
+
+#Line graph for percent of risky choice in cno vs. vehicle across blocks
+library(ggplot2)
+safelatplot<-ggplot(SafeLatencySummary, aes(x=Block, y=`Safe Choice Latency`,fill=Condition))+ geom_bar(stat="identity", color="black", position=position_dodge())  +geom_errorbar(aes(ymin=`Safe Choice Latency`, ymax=`Safe Choice Latency`+ sd/sqrt(length(unique(subset(IT_subset, Expression == "Expression")$Subject)))), width=.5, position=position_dodge(.9))+labs(title="Latency for Safe Choice", x="Probability(%)", y="Press Latency (s)") +ylim(0,6) +theme_classic() +scale_fill_manual(values=c("coral","turquoise3"))
+
+safelatplot
+```
+
+
+```{r}
+#goal:  make boxplots for CNO and Veh latency per block for CNO and Veh for subjects with Expression
+# for IT, all animals had DREADD, so no need to separate into control and dreadd groups
+
+
+#import ggplot
+library(ggplot2)
+
+#Plot risky decisions over blocks in dreadd vs. vehicle
+
+RiskyChoice_plot <- ggplot(IT_subset, aes(x=Block, y=`Risky Choice Percent`,fill= Condition)) +geom_line(position=position_dodge(0.1)) + geom_point(position=position_dodge((0.1)))+ labs(title="Risky Choices Across Blocks for CNO vs. Vehicle", x="Probability of Reward on Risky Lever", y= "Presses") + stat_summary(fun.data= mean_se, fun.args = list(mult=1), geom= "crossbar", width=0.5, color = "black") + scale_fill_brewer(palette="Blues") + theme_minimal() + facet_grid(.~ Expression) 
+
+RiskyChoice_plot
+# geom_jitter if adding individual datapoints + geom_jitter(shape=16, position= position_jitter(0.0))
+#ylim= range(IT_subset$`Latency to choose rt lever`, na.rm=TRUE), col=ifelse(IT_subset$Condition =="CNO","purple", "blue"))  
+  
+
+
+```
+
+```{r}
+#Do a plot for safe lever choices
+
+SafeChoice_plot <- ggplot(IT_subset, aes(x=Block, y=`Safe Choice`,fill= Condition)) + geom_jitter(shape= 5, position = position_jitter(0.1)) + labs(title="Safe Choices Across Blocks for CNO vs. Vehicle", x="Probability of Reward on Safe Lever", y= "Presses") + stat_summary(fun.data= mean_se, fun.args = list(mult=1), geom= "crossbar", width=0.5, color = "black") + scale_fill_brewer(palette="Blues") + theme_classic() + facet_grid(.~ Expression) 
+
+SafeChoice_plot
+```
+
+```{r}
+#For risky latencies across blocks for CNO vs. Veh
+
+RiskyLatency_plot <- ggplot(IT_subset, aes(x=Block, y=`Risky Choice Latency`,fill= Condition)) + geom_jitter(shape= 23, position = position_jitter(0.1)) + labs(title="Risky Choices Press Latency", x="Reward Probability (%)", y= "Latency (s)") + stat_summary(fun.data= mean_se, fun.args = list(mult=1), geom= "crossbar", width=0.5, color = "black") + scale_fill_brewer(palette="Blues") + theme_classic() + facet_grid(.~ Expression) + ylim(0,5)
+
+RiskyLatency_plot
+```
+
+```{r}
+SafeLatency_plot <- ggplot(IT_subset, aes(x=Block, y=`Safe Choice Latency`,fill= Condition)) + geom_jitter(shape= 5, position = position_jitter(0.1)) + labs(title="Safe Choice Latencies for CNO vs. Vehicle", x="Probability of Reward on Risky Lever", y= "Latency") + stat_summary(fun.data= mean_se, fun.args = list(mult=1), geom= "crossbar", width=0.5, color = "black") + scale_fill_brewer(palette="Blues") + theme_minimal() + facet_grid(.~ Expression) 
+
+SafeLatency_plot
+```
+
+```{r}
+#Now, time to analyze data for significant differences in latency
+
+#show random sample
+dplyr::sample_n(IT_ProbDisc,10)
+#check structure
+str(IT_ProbDisc)
+#convert block to a factor so that it is a grouping variable and recode levels
+IT_subset$Block.factor<-factor(IT_subset$Block,
+                    levels=c(1,2,3,4),
+                    labels=c("Block 1", "Block2", "Block 3", "Block 4"))
+
+#subset data further to only analyze for expressing animals and remove NA values
+
+IT_expression <- subset(IT_subset, Expression == "Expression", na.rm = TRUE)
+
+head(IT_expression)
+
+
+
+```
+
+```{r}
+#Significance test for risky choice in dreadd animals- first * to check interaction. If not sig, do additive (+)
+TwoAnova_Risky<- aov(`Risky Choice Percent`~ Block * Condition, data= IT_expression)
+summary(TwoAnova_Risky)
+#multiple pair-wise comparisons using general linear hypothesis tests from multcomp library
+library(multcomp)
+summary(glht(TwoAnova_Risky, linfct = mcp(Block.factor = "Tukey")), test=adjusted(type="Tukey"))
+
+
+
+```
+
+```{r}
+#levene's test  for homogeneity of variance
+library(car)
+leveneTest(`Risky Choice`~Block.factor * Condition, data=IT_expression)
+#test anova normal distribution assumption
+plot(twoAnovadreadd_Risky, 2)
+#Shapiro-Wilk test on ANOVA residuals to confirm normality
+#get residuals
+aov_residuals <- residuals(object = twoAnovadreadd_Risky)
+#Shapiro-Wilk test
+shapiro.test(x=aov_residuals)
+
+#or pairwise t-test or nonparametric (wilcoxon) with Bonferroni correction
+#library(MASS)
+#pairwise.wilcox.test(IT_subset$`Risky Choice`, IT_expression$Block.factor * IT_expression$Condition, p.adj = "bonf")
+
+```
+
+```{r}
+#Safe choice
+twoAnovadreadd_Safe<- aov(IT_expression$`Safe Choice`~ Block * Condition, data= IT_expression)
+summary(twoAnovadreadd_Safe)
+#check homogeneity of variance
+plot(twoAnovadreadd_Safe,1)
+#tukey multiple pairwise comparison of means for probability (block)
+TukeyHSD(twoAnovadreadd_Safe, which = "Block.factor")
+#multiple pair-wise comparisons using general linear hypothesis tests from multcomp library
+library(multcomp)
+summary(glht(twoAnovadreadd_Safe, linfct = mcp(Block.factor = "Tukey")))
+```
+
+```{r}
+
+library(MASS)
+
+#levene's test  for homogeneity of variance for safe choice
+library(car)
+leveneTest(`Safe Choice`~Block.factor * Condition, data=IT_expression)
+#test anova normal distribution assumption
+plot(twoAnovadreadd_Safe, 2)
+#Shapiro-Wilk test on ANOVA residuals to confirm normality
+#get residuals
+aov_residuals <- residuals(object = twoAnovadreadd_Safe)
+#Shapiro-Wilk test
+shapiro.test(x=aov_residuals)
+
+#or pairwise t-test or nonparametric (wilcoxon) with Bonferroni correction
+#pairwise.wilcox.test(IT_subset$`Safe Choice`, IT_expression$Block.factor * IT_expression$Condition, p.adj = "bonf")
+```
+
+```{r}
+twoAnovadreadd_SafeLat<- aov(IT_expression$`Safe Choice Latency`~ Block * Condition, data= IT_expression)
+summary(twoAnovadreadd_SafeLat)
+#check homogeneity of variance
+plot(twoAnovadreadd_SafeLat,1)
+#tukey multiple pairwise comparison of means for probability (block)
+TukeyHSD(twoAnovadreadd_SafeLat, which = "Block.factor")
+#multiple pair-wise comparisons using general linear hypothesis tests from multcomp library
+library(multcomp)
+summary(glht(twoAnovadreadd_SafeLat, linfct = mcp(Block.factor = "Tukey")))
+
+library(MASS)
+
+#levene's test  for homogeneity of variance
+library(car)
+leveneTest(`Safe Choice Latency`~Block.factor * Condition, data=IT_expression)
+#test anova normal distribution assumption
+plot(twoAnovadreadd_SafeLat, 2)
+#Shapiro-Wilk test on ANOVA residuals to confirm normality
+#get residuals
+aov_residuals <- residuals(object = twoAnovadreadd_SafeLat)
+#Shapiro-Wilk test
+shapiro.test(x=aov_residuals)
+```
+
+```{r}
+RiskyLatencySummary
+twoAnovadreadd_RiskLat<- aov(IT_expression$`Risky Choice Latency`~ Block * Condition, data= IT_expression)
+summary(twoAnovadreadd_RiskLat)
+#check homogeneity of variance
+plot(twoAnovadreadd_RiskLat,1)
+#tukey multiple pairwise comparison of means for probability (block)
+TukeyHSD(twoAnovadreadd_RiskLat, which = "Block.factor")
+#multiple pair-wise comparisons using general linear hypothesis tests from multcomp library
+library(multcomp)
+summary(glht(twoAnovadreadd_RiskLat, linfct = mcp(Block.factor = "Tukey")))
+
+library(MASS)
+
+#levene's test  for homogeneity of variance
+library(car)
+leveneTest(`Risky Choice Latency`~Block.factor * Condition, data=IT_expression)
+#test anova normal distribution assumption
+plot(twoAnovadreadd_RiskLat, 2)
+#Shapiro-Wilk test on ANOVA residuals to confirm normality
+#get residuals
+aov_residuals <- residuals(object = twoAnovadreadd_RiskLat)
+#Shapiro-Wilk test
+shapiro.test(x=aov_residuals)
+```
+

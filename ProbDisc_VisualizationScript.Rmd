@@ -1,0 +1,190 @@
+---
+title: "ProbDisc"
+author: "Elizabeth Crummy"
+date: "April 3, 2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+#Load file into enivronment
+library(readxl)
+PT_ProbDisc <- read_excel("C:/Users/eacru/OneDrive/Documents/Ferguson lab data/Probability discounting/PT_ProbDisc.xlsx")
+View(PT_ProbDisc)
+```
+
+```{r}
+
+
+```
+```{r}
+#Create new columns for 'Risky' and 'Safe' levers, latencies for risky and safe levers
+PT_ProbDisc[,"Risky Choice"] <- NA
+PT_ProbDisc[,"Safe Choice"]<- NA
+
+#Most subjects had the risky choice as right lever, but 147,148, 155,156,157,158 were left lever risky
+#Copy 'Left Choice' presses to risky lever if those animals, else right choice
+#load dplyr library for between function to specify subject range
+library(dplyr)
+PT_ProbDisc$`Risky Choice` <- ifelse(PT_ProbDisc$Subject[between(PT_ProbDisc$Subject,127, 130)] |PT_ProbDisc$Subject <= "120", PT_ProbDisc$`Left Choices`, PT_ProbDisc$`Right Choices`)
+#Now will do the same for the 'Safe Choice'
+PT_ProbDisc$`Safe Choice` <- ifelse(PT_ProbDisc$Subject[between(PT_ProbDisc$Subject, 127, 130)] |PT_ProbDisc$Subject <= "120", PT_ProbDisc$`Right Choices`, PT_ProbDisc$`Left Choices`)
+#...And latencies divided into risky and safe during choice sessions
+PT_ProbDisc$`Risky Choice Latency` <- ifelse(PT_ProbDisc$Subject[between(PT_ProbDisc$Subject, 127, 130)] |PT_ProbDisc$Subject <= "120", PT_ProbDisc$`Latency to choose lt lever`, PT_ProbDisc$`Latency to choose rt lever`)
+#Now will do the same for the 'Safe Choice'
+PT_ProbDisc$`Safe Choice Latency` <- ifelse(PT_ProbDisc$Subject[between(PT_ProbDisc$Subject, 127, 130)] |PT_ProbDisc$Subject <= "120", PT_ProbDisc$`Latency to choose rt lever`, PT_ProbDisc$`Latency to choose lt lever`)
+
+#transform risky choice responses into percent of choices
+PT_ProbDisc$'Risky Choice Percent' <- PT_ProbDisc$'Risky Choice' /10 * 100
+#transform safe choice to percent of choices
+PT_ProbDisc$'Safe Choice Percent' <- PT_ProbDisc$'Safe Choice' /10 * 100
+```
+```{r}
+#make subset with only the CNO and Veh conditions
+PT_subset<-subset(PT_ProbDisc, Condition == "Veh" | Condition == "CNO")
+
+```
+
+```{r}
+#Set Block as a factor 
+PT_subset$Block<-factor(PT_subset$Block, levels=c(1,2,3,4), labels=c("100","50","12.5","6.25"))
+#Set group as factor of either controls or expressed dreadd
+PT_subset$Group<-as.factor(PT_subset$Group)
+
+#Set subject as factor
+PT_subset$Subject<-as.factor(PT_subset$Subject)
+```
+
+```{r}
+#From sthda
+#+++++++++++++++++++++++++
+# Function to calculate the mean and the standard deviation
+  # for each group
+#+++++++++++++++++++++++++
+# data : a data frame
+# varname : the name of a column containing the variable
+  #to be summariezed
+# groupnames : vector of column names to be used as
+  # grouping variables
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+```
+
+```{r}
+#Summary statistics for risky choice - calculate Sd for risky choice percentage
+RiskyPercentSummary <- data_summary(subset(PT_subset, Group=="DREADD"), varname="Risky Choice Percent", groupnames=c("Block", "Condition"))
+
+#Line graph for percent of risky choice in cno vs. vehicle across blocks
+library(ggplot2)
+pt_riskyplot<-ggplot(RiskyPercentSummary, aes(x=Block, y= `Risky Choice Percent`, group=Condition, color=Condition))+ geom_line(size=1) +geom_point(size=4) +geom_errorbar(aes(ymin=`Risky Choice Percent`- sd/sqrt(length(unique(subset(PT_subset, Group == "DREADD")$Subject))), ymax=`Risky Choice Percent`+ sd/sqrt(length(unique(subset(PT_subset, Group == "DREADD")$Subject)))), width=.5)+labs(title="Risky Choice across Session", x="Probability(%)", y="Risky Choice (%)")+theme_classic()+scale_color_manual(values=c("coral","turquoise3"))
+```
+
+```{r}
+#Summary statistics for risky choice - calculate Sd for risky choice percentage
+SafePercentSummary <- data_summary(subset(PT_subset, Group=="DREADD"), varname="Safe Choice Percent", groupnames=c("Block", "Condition"))
+
+#Line graph for percent of risky choice in cno vs. vehicle across blocks
+library(ggplot2)
+pt_safeplot<-ggplot(SafePercentSummary, aes(x=Block, y= `Safe Choice Percent`, group=Condition, color=Condition))+ geom_line(size=1) +geom_point(size=4) +geom_errorbar(aes(ymin=`Safe Choice Percent`- sd/sqrt(length(unique(subset(PT_subset, Group == "DREADD")$Subject))), ymax=`Safe Choice Percent`+ sd/sqrt(length(unique(subset(PT_subset, Group == "DREADD")$Subject)))), width=.5)+labs(title="Safe Choice across Session", x="Probability(%)", y="Safe Choice (%)")+theme_classic()+scale_color_manual(values=c("coral","turquoise3"))
+```
+
+```{r}
+#Summary statistics for risky choice latencies - calculate sd for risky choice latencies
+RiskyLatencySummary <- data_summary(subset(PT_subset, Group=="DREADD"), varname="Risky Choice Latency", groupnames=c("Block", "Condition", "Group"))
+
+#Line graph for percent of risky choice in cno vs. vehicle across blocks
+library(ggplot2)
+pt_risklatplot<-ggplot(RiskyLatencySummary, aes(x=Block, y=`Risky Choice Latency`,fill=Condition))+ geom_bar(stat="identity", color="black", position=position_dodge())  +geom_errorbar(aes(ymin=`Risky Choice Latency`, ymax=`Risky Choice Latency`+ sd/sqrt(length(unique(subset(PT_subset, Group == "DREADD")$Subject)))), width=.5, position=position_dodge(.9))+ ylim(0,3)+labs(title="Latency for Risky Choice", x="Probability(%)", y="Press Latency (s)") +theme_classic() +scale_fill_manual(values=c("coral","turquoise3")) 
+```
+
+```{r}
+#Summary statistics for risky choice latencies - calculate sd for risky choice latencies
+SafeLatencySummary <- data_summary(subset(PT_subset, Group=="DREADD"), varname="Safe Choice Latency", groupnames=c("Block", "Condition", "Group"))
+
+#Line graph for percent of risky choice in cno vs. vehicle across blocks
+library(ggplot2)
+pt_safelatplot<-ggplot(SafeLatencySummary, aes(x=Block, y=`Safe Choice Latency`,fill=Condition))+ geom_bar(stat="identity", color="black", position=position_dodge())  +geom_errorbar(aes(ymin=`Safe Choice Latency`, ymax=`Safe Choice Latency`+ sd/sqrt(length(unique(subset(PT_subset, Group == "DREADD")$Subject)))), width=.5, position=position_dodge(.9))+labs(title="Latency for Safe Choice", x="Probability(%)", y="Press Latency (s)") +theme_classic() +scale_fill_manual(values=c("coral","turquoise3")) 
+```
+
+
+```{r}
+#build for loop 
+#goal: for Both Groups (Control and Dreadd), make boxplots for CNO and Veh latency per block
+
+# Extract variables we need for plotting things in the nested for loop
+# get unique ranks of conditions (CNO vs Veh, including Baseline)
+ranksconditions <- sort(unique(PT_subset$Condition))
+# nconditions is the number of conditions (Baseline, CNO, Veh)
+nconditions <- length(ranksconditions)
+# variable for storing how to display Blocks on Plot
+# new_conditions contains how we'd like to display the names of the conditions in the plots
+new_conditions <- c("CNO", "Veh")
+new_blocks <- c("Block 1","Block2","Block3", "Block4")
+# ranksgroup contains the Blocks as labelled in the data set
+ranksgroup <- unique(PT_subset$Group)
+# ngroups is the number of groups (Control and DREADD conditions)
+ngroups <- length(ranksgroup)
+#title labels based on group
+group_labels= c("Control","DREADD")
+
+#initialize plots on one figure
+par(mfrow=c(ngroups,nconditions))
+
+#for loop going through each group and each condition the latency in each block)
+#first, loop through the two virus groups- control and dreadd
+for(i in 1:ngroups) {
+  #subset the data based on each group and each condition
+  data_subset <- subset(PT_subset, Group==ranksgroup[i])
+  boxplot(`Safe Choice Percent` ~interaction(Condition, Block), data=data_subset, xlab= "Block", ylab="Safe Choice (%)", main= group_labels[i], ylim= range(PT_subset$`Safe Choice Percent`, na.rm=TRUE), col=ifelse(PT_subset$Condition=="CNO","coral", "turquoise"))  
+  }
+
+
+```
+
+```{r}
+#line plot with mulitple groups from stda.com tutorial
+library("ggpubr")
+for(i in 1:ngroups){
+  data_subset<- subset(PT_subset, Group==ranksgroup[i])
+  ggline(data=subset(data_subset, !is.na(data_subset$`Latency to choose rt lever`)), x= "Block", y="Risky Lever", color = 'Condition', add=c("mean_se","dotplot"), palette=c("Green","Blue"))
+ }
+
+
+```
+
+```{r}
+#Now, time to analyze data for significant differences in latency
+#Significance test for risky choice in dreadd animals- first * to check interaction. If not sig, do additive (+)
+threeAnova_Risky<- aov(`Risky Choice Percent`~ Block * Condition, data= subset(PT_subset, Group == "DREADD"))
+summary(threeAnova_Risky)
+#multiple pair-wise comparisons using general linear hypothesis tests from multcomp library
+library(multcomp)
+summary(glht(twoAnovadreadd_Risky, linfct = mcp(Block.factor = "Tukey")), test=adjusted(type="bonferroni"))
+
+```
+
+```{r}
+#three way anova for safe choice as a function of reward probability, condition, and control vs. dreadd
+threeAnova_Safe<- aov(`Safe Choice Percent`~ Block * Condition, data= subset(PT_subset, Group == "DREADD"))
+summary(threeAnova_Safe)
+```
+
+```{r}
+#anova for latencies
+threeAnova_SafeLat<- aov(`Safe Choice Latency`~ Block * Condition, data= subset(PT_subset, Group == "DREADD"))
+summary(threeAnova_SafeLat)
+```
+```{r}
+threeAnova_RiskyLat<- aov(`Risky Choice Latency`~ Block * Condition, data= subset(PT_subset, Group == "DREADD"))
+summary(threeAnova_RiskyLat)
+```
+
+
