@@ -11,7 +11,7 @@ import numpy as np
 
 # load file
 
-pattern_data = pd.read_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\OFC_nonspecific_reversal_events_processed.csv")
+pattern_data = pd.read_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\OFC_PT_reversal_events_processed.csv")
 
 #combine winlose stayshift into one column
 
@@ -33,9 +33,9 @@ def getTrialstoFirstReversal(data):
     return trialsToReversal
 
 
+trialsToReversal = getTrialstoFirstReversal(pattern_data)  
     
-    
-
+trialsToReversal.to_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\Analysis output files\\ trialsToReversal_PT_reversal_events_processed.csv")
 
 #output is list group of counts for each subject in each session
 #%%
@@ -49,8 +49,16 @@ def getWinLoseStayShiftCountsAfterReversal(data):
 #group by subject, date, and reversal block
     winLoseStayShift_counts = data_nonzero.groupby([data_nonzero.subject, data_nonzero.date, data_nonzero.ReversalNumber])['PatternComplete'].value_counts()
     winLoseStayShift_frequencies = data_nonzero.groupby([data_nonzero.subject, data_nonzero.date, data_nonzero.ReversalNumber])['PatternComplete'].value_counts(normalize = True)
+    winLoseStayShift_aggregate = data_nonzero.groupby([data_nonzero.subject, data_nonzero.date])['PatternComplete'].value_counts(normalize = True)
 # get counts for WinStay, LoseStay, WinShift, LoseShift
-    return winLoseStayShift_counts, winLoseStayShift_frequencies
+    return winLoseStayShift_counts, winLoseStayShift_frequencies, winLoseStayShift_aggregate
+
+winLoseStayShift_counts, winLoseStayShift_frequencies, winLoseStayShift_aggregate = getWinLoseStayShiftCountsAfterReversal(pattern_data)
+
+winLoseStayShift_counts.to_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\Analysis output files\\winLoseStayShiftafterreversal_counts_PT_reversal_events_processed.csv")
+winLoseStayShift_frequencies.to_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\Analysis output files\\winLoseStayShiftafterreversal_frequencies_PT_reversal_events_processed.csv")
+winLoseStayShift_aggregate.to_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\Analysis output files\\winLoseStayShiftafterreversal_aggfrequencies_PT_reversal_events_processed.csv")
+
 
 #%%
 # Analysis 3: Percent win-stay, lose-stay behavior before first reversal
@@ -66,15 +74,11 @@ def getWinLoseStayShiftCountsBeforeReversal(data):
 # get counts for WinStay, LoseStay, WinShift, LoseShift
     return winLoseStayShift_counts, winLoseStayShift_frequencies
 
-    #%%
-def getIndexPositionsByCondition(listOfElements, condition):
-    ''' Returns the indexes of items in the list that returns True when passed
-    to condition() '''
-    indexPosList = []
-    for i in range(len(listOfElements)): 
-        if condition(listOfElements[i]) == True:
-            indexPosList.append(i)
-    return indexPosList
+winLoseStayShift_counts, winLoseStayShift_frequencies = getWinLoseStayShiftCountsBeforeReversal(pattern_data)
+ 
+winLoseStayShift_counts.to_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\Analysis output files\\winLoseStayShiftbeforereversal_counts_PT_reversal_events_processed.csv")
+winLoseStayShift_frequencies.to_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\Analysis output files\\winLoseStayShiftbeforereversal_frequencies_PT_reversal_events_processed.csv")
+ 
 
 #%%
 
@@ -92,9 +96,12 @@ def getRelevantWinLossIndices(data):
 # get all of the losses and collect in a list
     idx_losses = just_results[just_results.event_type_raw == 33.0].index.values.tolist()
 # using indices, select in dataframe where these losses and wins occurred
-    test_df = just_results.loc[idx_losses or idx_wins]
+    idx_results = idx_wins + idx_losses
+    test_df = just_results.loc[idx_results]
 # output should be dataframe with relevant wins and losses    
-   return test_df
+    return test_df
+
+
 #%%
 #using dataframe with selected indices, make function with data input and look up row in each reversal number where the first win occurred
    def getRowForWin(df, index):
@@ -103,7 +110,6 @@ def getRelevantWinLossIndices(data):
                (df['date'] == df.date.iloc[index]) & 
                (df['event_type_raw'] == 5) &
                (df['ReversalNumber'] == df.ReversalNumber.iloc[index])]
-#%%
     #%%
 #input is dataframe filtered to be all losses and no other event types, as well as list of indexes where a first win occurs in each reversal 
 #output should be either dataframe or list of indices of all losses with indexes lower than first win for each Reversal block number
@@ -121,33 +127,16 @@ def addPreservativeResponses(df):
             
     return new_df
 
-#%%
-
-just_results = pattern_data[pattern_data.ReversalNumber != 0].loc[pattern_data.event_type_raw.isin([5.0, 33.0])]
-just_wins = pattern_data[pattern_data.ReversalNumber != 0].loc[pattern_data.event_type_raw.isin([5.0])]
-just_losses = pattern_data[pattern_data.ReversalNumber != 0].loc[pattern_data.event_type_raw.isin([33.0])]
-
-idx_wins = just_wins.groupby([just_wins.subject, just_wins.date, just_wins.ReversalNumber])['event_type_raw'].idxmax().tolist()
-idx_losses = just_results[just_results.event_type_raw == 33.0].index.values.tolist()
-idx_losses_mini = idx_losses[:50]
-idx_wins_mini = idx_wins[:50]
-#combines relevant wins and losses indices into one list 
-indices_list = idx_losses + idx_wins
-#sort in ascending order
-indices_list.sort()
-#use the indices list to filter out dataframe for relevant rows
-
-test_df = pattern_data.loc[indices_list]
 
 #%%
-    test_df = just_results.loc[idx_losses or idx_wins]
-    grouped_presresponses = test_index.groupby([test_index.subject,test_index.date,test_index.ReversalNumber])['event_type_raw']
+test_df = getRelevantWinLossIndices(pattern_data)    
+megatest = addPreservativeResponses(test_df)
+megatestcounts = megatest.groupby(['subject','date','ReversalNumber'])['event_type_raw'].count()
     
-    
-    #compare to when you just have sum of losses grouped by subject, date and reversal number
-    
-    grouped_alllosses = just_losses.groupby([just_losses.subject, just_losses.date, just_losses.ReversalNumber])['event_type_raw'].count()
 #%%
+#everything to csv
+
+megatestcounts.to_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\Analysis output files\\PreservativeResponses_PT_reversal_events_processed.csv")
 
     
     
