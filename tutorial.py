@@ -56,7 +56,7 @@ def transform(file_contents):
     return cleaned_rows
 
 def main():
-    root_file_path = "C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Reversal\\IT_Hm4Di"
+    root_file_path = "C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Reversal\\IT_Hm4Di\\IT hm4di full\\IT hm4di\\"
     output_file_path = "C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\IT_reversal"
     Loader.create_file(output_file_path)
     file_path_list = Extracter.getFilePathList(root_file_path)
@@ -67,12 +67,13 @@ def main():
             print(filePath + ": Transforming")
             cleaned_data = Transformer.createCleanedFile(extracted_data)
             print(filePath + ": Loading")
-            enhanced_data = Transformer.createEnhancedFile(cleaned_data)
-            print(cleaned_data)
-            Loader.loadAll(cleaned_data, output_file_path)
+            #enhanced_data = Transformer.createEnhancedFile(cleaned_data)
+            #print(cleaned_data)
+            Loader.cleanedLoadAll(cleaned_data, output_file_path)
         except Exception as e:
+            print(e)
             print(filePath + ": Skipping")
-    
+    print("All Done!")
     
     #paths = get_path()
     #for path in paths:

@@ -7,8 +7,8 @@ Data frame get win stay shift behavior
 #%%
 import pandas as pd
 
-test_enhanced = pd.read_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\OFCdual_reversal")
-dataset_name = 'OFC_ITPTdual_reversal_events'
+test_enhanced = pd.read_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\IT_reversal")
+dataset_name = 'OFC_IT_reversal_events'
 root = "C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\"
 #%% 
 winlose_df = pd.DataFrame()

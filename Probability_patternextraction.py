@@ -7,8 +7,8 @@ Data frame get win stay shift behavior
 #%%
 import pandas as pd
 
-test_enhanced = pd.read_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\PT_discounting")
-dataset_name = 'OFC_PT_probability_events'
+test_enhanced = pd.read_csv("C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\IT_discounting")
+dataset_name = 'OFC_IT_probability_events'
 root = "C:\\Users\\eacru\\OneDrive\\Documents\\Ferguson lab data\\Probability discounting\\compfiledFiles\\"
 #%% 
 def getRelevantProbabilityStamps(dataset):
@@ -23,7 +23,7 @@ def getWinLose(filtered_dataset):
      filtered_dataset.loc[filtered_dataset.event_type_raw == 33.0, 'WinLose'] = 'Lose'
      return filtered_dataset
 
-#winLose_df = getWinLose(presses_df)
+winLose_df = getWinLose(presses_df)
 #%%
  # 2. get if after win or lose, they switched to a new lever or kept to same lever
 def getStayShift(filtered_dataset):
@@ -38,7 +38,7 @@ def getStayShift(filtered_dataset):
          #print("index " + str(index))
          #print("row " + str(row))
          row_number = just_presses.index[i]
-         
+         print("Running row " + str(i) + " out of " + str(len(just_presses)))
          if i == 0:
              filtered_dataset['StayShift'][row_number] = 'Start'
          elif just_presses.mask_1.iloc[i] == just_presses.mask_1.iloc[i-1]:
@@ -50,12 +50,13 @@ def getStayShift(filtered_dataset):
              
      return filtered_dataset
          
-#stayShift_df = getStayShift(winLose_df)  
+stayShift_df = getStayShift(winLose_df)  
 #%%
 def combineStayShiftWinLose(filtered_dataset):
     filtered_dataset['WinLoseStayShift'] = None
     for i in range(len(filtered_dataset)):
         row_number = filtered_dataset.index[i]
+        print("Running row " + str(i) + " out of " + str(len(filtered_dataset)))
         if i != len(filtered_dataset) -1:
             if filtered_dataset.StayShift.iloc[i] != None:
                 if filtered_dataset.WinLose.iloc[i + 1] != 'NaN':
@@ -66,7 +67,7 @@ def combineStayShiftWinLose(filtered_dataset):
         #ignore last row
     #outline
     #load in dataframe
-#filtered_compiled = combineStayShiftWinLose(stayShift_df)
+filtered_compiled = combineStayShiftWinLose(stayShift_df)
 #%%
 def trackBlock(dataset):
     block = 0
